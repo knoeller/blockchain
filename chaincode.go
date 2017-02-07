@@ -34,9 +34,9 @@ import (
 type SimpleChaincode struct {
 }
 
-var buildingIndexStr = "_buildingindex"				//name for the key/value that will store a list of all known buildings
+var marbleIndexStr = "_marbleindex"				//name for the key/value that will store a list of all known marbles
 
-type Building struct{
+type Marble struct{
 	Name string `json:"name"`					//the fieldtags are needed to keep case from bouncing around
 	Color string `json:"color"`
 	Size int `json:"size"`
@@ -64,6 +64,9 @@ func main() {
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var Aval int
 	var err error
+    
+    //http.DefaultTransport.(*http.Transport).ResponseHeaderTimeout = time.Second * 45    
+    fmt.Printf("*********************Init: %s", args[0])
 
 	if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 1")
@@ -83,7 +86,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	
 	var empty []string
 	jsonAsBytes, _ := json.Marshal(empty)								//marshal an emtpy array of strings to clear the index
-	err = stub.PutState(buildingIndexStr, jsonAsBytes)
+	err = stub.PutState(marbleIndexStr, jsonAsBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -113,9 +116,9 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return res, err
 	} else if function == "write" {											//writes a value to the chaincode state
 		return t.Write(stub, args)
-	} else if function == "init_building" {									//create a new building
-		return t.init_building(stub, args)
-	} else if function == "set_user" {										//change owner of a building
+	} else if function == "init_marble" {									//create a new marble
+		return t.init_marble(stub, args)
+	} else if function == "set_user" {										//change owner of a marble
 		res, err := t.set_user(stub, args)
 		return res, err
 	}
@@ -174,28 +177,28 @@ func (t *SimpleChaincode) Delete(stub shim.ChaincodeStubInterface, args []string
 		return nil, errors.New("Failed to delete state")
 	}
 
-	//get the building index
-	buildingsAsBytes, err := stub.GetState(buildingIndexStr)
+	//get the marble index
+	marblesAsBytes, err := stub.GetState(marbleIndexStr)
 	if err != nil {
-		return nil, errors.New("Failed to get building index")
+		return nil, errors.New("Failed to get marble index")
 	}
-	var buildingIndex []string
-	json.Unmarshal(buildingsAsBytes, &buildingIndex)								//un stringify it aka JSON.parse()
+	var marbleIndex []string
+	json.Unmarshal(marblesAsBytes, &marbleIndex)								//un stringify it aka JSON.parse()
 	
-	//remove building from index
-	for i,val := range buildingIndex{
+	//remove marble from index
+	for i,val := range marbleIndex{
 		fmt.Println(strconv.Itoa(i) + " - looking at " + val + " for " + name)
-		if val == name{															//find the correct building
-			fmt.Println("found building")
-			buildingIndex = append(buildingIndex[:i], buildingIndex[i+1:]...)			//remove it
-			for x:= range buildingIndex{											//debug prints...
-				fmt.Println(string(x) + " - " + buildingIndex[x])
+		if val == name{															//find the correct marble
+			fmt.Println("found marble")
+			marbleIndex = append(marbleIndex[:i], marbleIndex[i+1:]...)			//remove it
+			for x:= range marbleIndex{											//debug prints...
+				fmt.Println(string(x) + " - " + marbleIndex[x])
 			}
 			break
 		}
 	}
-	jsonAsBytes, _ := json.Marshal(buildingIndex)									//save new index
-	err = stub.PutState(buildingIndexStr, jsonAsBytes)
+	jsonAsBytes, _ := json.Marshal(marbleIndex)									//save new index
+	err = stub.PutState(marbleIndexStr, jsonAsBytes)
 	return nil, nil
 }
 
@@ -221,9 +224,9 @@ func (t *SimpleChaincode) Write(stub shim.ChaincodeStubInterface, args []string)
 }
 
 // ============================================================================================================================
-// Init Building - create a new building, store into chaincode state
+// Init Marble - create a new marble, store into chaincode state
 // ============================================================================================================================
-func (t *SimpleChaincode) init_building(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) init_marble(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 
 	//   0       1       2     3
@@ -233,7 +236,7 @@ func (t *SimpleChaincode) init_building(stub shim.ChaincodeStubInterface, args [
 	}
 
 	//input sanitation
-	fmt.Println("- start init building")
+	fmt.Println("- start init marble")
 	if len(args[0]) <= 0 {
 		return nil, errors.New("1st argument must be a non-empty string")
 	}
@@ -254,46 +257,46 @@ func (t *SimpleChaincode) init_building(stub shim.ChaincodeStubInterface, args [
 		return nil, errors.New("3rd argument must be a numeric string")
 	}
 
-	//check if building already exists
-	buildingAsBytes, err := stub.GetState(name)
+	//check if marble already exists
+	marbleAsBytes, err := stub.GetState(name)
 	if err != nil {
-		return nil, errors.New("Failed to get building name")
+		return nil, errors.New("Failed to get marble name")
 	}
-	res := Building{}
-	json.Unmarshal(buildingAsBytes, &res)
+	res := Marble{}
+	json.Unmarshal(marbleAsBytes, &res)
 	if res.Name == name{
-		fmt.Println("This building arleady exists: " + name)
+		fmt.Println("This marble arleady exists: " + name)
 		fmt.Println(res);
-		return nil, errors.New("This building arleady exists")				//all stop a building by this name exists
+		return nil, errors.New("This marble arleady exists")				//all stop a marble by this name exists
 	}
 	
-	//build the building json string manually
+	//build the marble json string manually
 	str := `{"name": "` + name + `", "color": "` + color + `", "size": ` + strconv.Itoa(size) + `, "user": "` + user + `"}`
-	err = stub.PutState(name, []byte(str))									//store building with id as key
+	err = stub.PutState(name, []byte(str))									//store marble with id as key
 	if err != nil {
 		return nil, err
 	}
 		
-	//get the building index
-	buildingsAsBytes, err := stub.GetState(buildingIndexStr)
+	//get the marble index
+	marblesAsBytes, err := stub.GetState(marbleIndexStr)
 	if err != nil {
-		return nil, errors.New("Failed to get building index")
+		return nil, errors.New("Failed to get marble index")
 	}
-	var buildingIndex []string
-	json.Unmarshal(buildingsAsBytes, &buildingIndex)							//un stringify it aka JSON.parse()
+	var marbleIndex []string
+	json.Unmarshal(marblesAsBytes, &marbleIndex)							//un stringify it aka JSON.parse()
 	
 	//append
-	buildingIndex = append(buildingIndex, name)									//add building name to index list
-	fmt.Println("! building index: ", buildingIndex)
-	jsonAsBytes, _ := json.Marshal(buildingIndex)
-	err = stub.PutState(buildingIndexStr, jsonAsBytes)						//store name of building
+	marbleIndex = append(marbleIndex, name)									//add marble name to index list
+	fmt.Println("! marble index: ", marbleIndex)
+	jsonAsBytes, _ := json.Marshal(marbleIndex)
+	err = stub.PutState(marbleIndexStr, jsonAsBytes)						//store name of marble
 
-	fmt.Println("- end init building")
+	fmt.Println("- end init marble")
 	return nil, nil
 }
 
 // ============================================================================================================================
-// Set User Permission on Building
+// Set User Permission on Marble
 // ============================================================================================================================
 func (t *SimpleChaincode) set_user(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
@@ -306,16 +309,16 @@ func (t *SimpleChaincode) set_user(stub shim.ChaincodeStubInterface, args []stri
 	
 	fmt.Println("- start set user")
 	fmt.Println(args[0] + " - " + args[1])
-	buildingAsBytes, err := stub.GetState(args[0])
+	marbleAsBytes, err := stub.GetState(args[0])
 	if err != nil {
 		return nil, errors.New("Failed to get thing")
 	}
-	res := Building{}
-	json.Unmarshal(buildingAsBytes, &res)										//un stringify it aka JSON.parse()
+	res := Marble{}
+	json.Unmarshal(marbleAsBytes, &res)										//un stringify it aka JSON.parse()
 	res.User = args[1]														//change the user
 	
 	jsonAsBytes, _ := json.Marshal(res)
-	err = stub.PutState(args[0], jsonAsBytes)								//rewrite the building with id as key
+	err = stub.PutState(args[0], jsonAsBytes)								//rewrite the marble with id as key
 	if err != nil {
 		return nil, err
 	}

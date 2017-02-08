@@ -19,10 +19,8 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"encoding/json"
-	"time"
 	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -43,7 +41,7 @@ type Description struct{
 }
 
 func main() {
-	err := shim.Start(new(SimpleChaincode))
+	shim.Start(new(SimpleChaincode))
 }
 
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
@@ -76,18 +74,14 @@ func (t *SimpleChaincode) Run(stub shim.ChaincodeStubInterface, function string,
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function == "init" {
 		return t.Init(stub, "init", args)
-	} 
-    else if function == "delete" {
+	} else if function == "delete" {
 		res, err := t.Delete(stub, args)
 		return res, err
-	} 
-    else if function == "write" {
+	} else if function == "write" {
 		return t.Write(stub, args)
-	} 
-    else if function == "init_blockhaus" {
+	} else if function == "init_blockhaus" {
 		return t.init_blockhaus(stub, args)
-	} 
-    else if function == "set_user" {
+	} else if function == "set_user" {
 		res, err := t.set_user(stub, args)
 		return res, err
 	}
@@ -183,12 +177,12 @@ func (t *SimpleChaincode) init_blockhaus(stub shim.ChaincodeStubInterface, args 
 	if err != nil {
 		return nil, errors.New("3rd argument must be a numeric string")
 	}
-	blockhausAsBytes, err := stub.GetState(name)
+	blockhaus1AsBytes, err := stub.GetState(name)
 	if err != nil {
 		return nil, errors.New("Failed to get blockhaus name")
 	}
 	res := Blockhaus{}
-	json.Unmarshal(blockhausAsBytes, &res)
+	json.Unmarshal(blockhaus1AsBytes, &res)
 	if res.Name == name{
 		return nil, errors.New("This blockhaus arleady exists")
 	}
@@ -197,12 +191,12 @@ func (t *SimpleChaincode) init_blockhaus(stub shim.ChaincodeStubInterface, args 
 	if err != nil {
 		return nil, err
 	}
-	blockhausAsBytes, err := stub.GetState(blockhausIndexStr)
+	blockhaus2AsBytes, err := stub.GetState(blockhausIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get blockhaus index")
 	}
 	var blockhausIndex []string
-	json.Unmarshal(blockhausAsBytes, &blockhausIndex)
+	json.Unmarshal(blockhaus2AsBytes, &blockhausIndex)
 	blockhausIndex = append(blockhausIndex, name)
 	jsonAsBytes, _ := json.Marshal(blockhausIndex)
 	err = stub.PutState(blockhausIndexStr, jsonAsBytes)

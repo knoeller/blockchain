@@ -28,16 +28,11 @@ import (
 
 type SimpleChaincode struct {
 }
-var blockhausIndexStr = "_blockhausindex"
-type Blockhaus struct{
+var assetIndexStr = "_assetindex"
+type Asset struct {
 	Name string `json:"name"`
-	Color string `json:"color"`
-	Size int `json:"size"`
+	Value string `json:"value"`
 	User string `json:"user"`
-}
-type Description struct{
-	Color string `json:"color"`
-	Size int `json:"size"`
 }
 
 func main() {
@@ -60,7 +55,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	var empty []string
 	jsonAsBytes, _ := json.Marshal(empty)
-	err = stub.PutState(blockhausIndexStr, jsonAsBytes)
+	err = stub.PutState(assetIndexStr, jsonAsBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -79,10 +74,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return res, err
 	} else if function == "write" {
 		return t.Write(stub, args)
-	} else if function == "init_blockhaus" {
-		return t.init_blockhaus(stub, args)
-	} else if function == "set_user" {
-		res, err := t.set_user(stub, args)
+	} else if function == "init_asset" {
+		return t.init_asset(stub, args)
+	} else if function == "transfer" {
+		res, err := t.transfer(stub, args)
 		return res, err
 	}
 	return nil, errors.New("Received unknown function invocation")
@@ -119,20 +114,20 @@ func (t *SimpleChaincode) Delete(stub shim.ChaincodeStubInterface, args []string
 	if err != nil {
 		return nil, errors.New("Failed to delete state")
 	}
-	blockhausAsBytes, err := stub.GetState(blockhausIndexStr)
+	assetAsBytes, err := stub.GetState(assetIndexStr)
 	if err != nil {
-		return nil, errors.New("Failed to get blockhaus index")
+		return nil, errors.New("Failed to get asset index")
 	}
-	var blockhausIndex []string
-	json.Unmarshal(blockhausAsBytes, &blockhausIndex)
-	for i,val := range blockhausIndex{
+	var assetIndex []string
+	json.Unmarshal(assetAsBytes, &assetIndex)
+	for i,val := range assetIndex{
 		if val == name{
-			blockhausIndex = append(blockhausIndex[:i], blockhausIndex[i+1:]...)
+			assetIndex = append(assetIndex[:i], assetIndex[i+1:]...)
 			break
 		}
 	}
-	jsonAsBytes, _ := json.Marshal(blockhausIndex)
-	err = stub.PutState(blockhausIndexStr, jsonAsBytes)
+	jsonAsBytes, _ := json.Marshal(assetIndex)
+	err = stub.PutState(assetIndexStr, jsonAsBytes)
 	return nil, nil
 }
 
@@ -151,11 +146,11 @@ func (t *SimpleChaincode) Write(stub shim.ChaincodeStubInterface, args []string)
 	return nil, nil
 }
 
-func (t *SimpleChaincode) init_blockhaus(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) init_asset(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
-	//   0       1       2     3
-	// "key", "arg1", "arg2", "user"
-	if len(args) != 4 {
+	//   0       1       2  
+	// "key", "value", "user", 
+	if len(args) != 3 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 4")
 	}
 	if len(args[0]) <= 0 {
@@ -167,55 +162,48 @@ func (t *SimpleChaincode) init_blockhaus(stub shim.ChaincodeStubInterface, args 
 	if len(args[2]) <= 0 {
 		return nil, errors.New("3rd argument must be a non-empty string")
 	}
-	if len(args[3]) <= 0 {
-		return nil, errors.New("4th argument must be a non-empty string")
-	}
 	name := args[0]
-	color := strings.ToLower(args[1])
-	user := strings.ToLower(args[3])
-	size, err := strconv.Atoi(args[2])
+	value := strings.ToLower(args[1])
+	user := strings.ToLower(args[2])
+	asset1AsBytes, err := stub.GetState(name)
 	if err != nil {
-		return nil, errors.New("3rd argument must be a numeric string")
+		return nil, errors.New("Failed to get asset name")
 	}
-	blockhaus1AsBytes, err := stub.GetState(name)
-	if err != nil {
-		return nil, errors.New("Failed to get blockhaus name")
-	}
-	res := Blockhaus{}
-	json.Unmarshal(blockhaus1AsBytes, &res)
+	res := Asset{}
+	json.Unmarshal(asset1AsBytes, &res)
 	if res.Name == name{
-		return nil, errors.New("This blockhaus arleady exists")
+		return nil, errors.New("This asset arleady exists")
 	}
-	str := `{"name": "` + name + `", "color": "` + color + `", "size": ` + strconv.Itoa(size) + `, "user": "` + user + `"}`
+	str := `{"name": "` + name + `", "value": "` + value + `", "user": "` + user + `"}`
 	err = stub.PutState(name, []byte(str))
 	if err != nil {
 		return nil, err
 	}
-	blockhaus2AsBytes, err := stub.GetState(blockhausIndexStr)
+	asset2AsBytes, err := stub.GetState(assetIndexStr)
 	if err != nil {
-		return nil, errors.New("Failed to get blockhaus index")
+		return nil, errors.New("Failed to get asset index")
 	}
-	var blockhausIndex []string
-	json.Unmarshal(blockhaus2AsBytes, &blockhausIndex)
-	blockhausIndex = append(blockhausIndex, name)
-	jsonAsBytes, _ := json.Marshal(blockhausIndex)
-	err = stub.PutState(blockhausIndexStr, jsonAsBytes)
+	var assetIndex []string
+	json.Unmarshal(asset2AsBytes, &assetIndex)
+	assetIndex = append(assetIndex, name)
+	jsonAsBytes, _ := json.Marshal(assetIndex)
+	err = stub.PutState(assetIndexStr, jsonAsBytes)
 	return nil, nil
 }
 
-func (t *SimpleChaincode) set_user(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) transfer(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 	//   0       1
-	// "name", "bob"
+	// "name", "user"
 	if len(args) < 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
-	blockhausAsBytes, err := stub.GetState(args[0])
+	assetAsBytes, err := stub.GetState(args[0])
 	if err != nil {
 		return nil, errors.New("Failed to get thing")
 	}
-	res := Blockhaus{}
-	json.Unmarshal(blockhausAsBytes, &res)
+	res := Asset{}
+	json.Unmarshal(assetAsBytes, &res)
 	res.User = args[1]
 	jsonAsBytes, _ := json.Marshal(res)
 	err = stub.PutState(args[0], jsonAsBytes)

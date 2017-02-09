@@ -74,8 +74,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return res, err
 	} else if function == "write" {
 		return t.Write(stub, args)
-	} else if function == "init_asset" {
-		return t.init_asset(stub, args)
+	} else if function == "create" {
+		return t.create(stub, args)
 	} else if function == "transfer" {
 		res, err := t.transfer(stub, args)
 		return res, err
@@ -146,7 +146,7 @@ func (t *SimpleChaincode) Write(stub shim.ChaincodeStubInterface, args []string)
 	return nil, nil
 }
 
-func (t *SimpleChaincode) init_asset(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) create(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 	//   0       1       2  
 	// "key", "value", "user", 

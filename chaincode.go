@@ -75,11 +75,14 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	} else if function == "write" {
 		return t.Write(stub, args)
 	} else if function == "create" {
-		return t.create(stub, args)
+		return t.Create(stub, args)
 	} else if function == "transfer" {
-		res, err := t.transfer(stub, args)
+		res, err := t.Transfer(stub, args)
 		return res, err
-	}
+	} else if function == "change" {
+		res, err := t.Change(stub, args)
+		return res, err
+	}   
 	return nil, errors.New("Received unknown function invocation")
 }
 
@@ -146,7 +149,7 @@ func (t *SimpleChaincode) Write(stub shim.ChaincodeStubInterface, args []string)
 	return nil, nil
 }
 
-func (t *SimpleChaincode) create(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Create(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 	//   0       1       2  
 	// "key", "value", "user", 
@@ -191,7 +194,7 @@ func (t *SimpleChaincode) create(stub shim.ChaincodeStubInterface, args []string
 	return nil, nil
 }
 
-func (t *SimpleChaincode) transfer(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) Transfer(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 	//   0       1
 	// "name", "user"
@@ -205,6 +208,28 @@ func (t *SimpleChaincode) transfer(stub shim.ChaincodeStubInterface, args []stri
 	res := Asset{}
 	json.Unmarshal(assetAsBytes, &res)
 	res.User = args[1]
+	jsonAsBytes, _ := json.Marshal(res)
+	err = stub.PutState(args[0], jsonAsBytes)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func (t *SimpleChaincode) Change(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var err error
+	//   0       1
+	// "name", "value"
+	if len(args) < 2 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 2")
+	}
+	assetAsBytes, err := stub.GetState(args[0])
+	if err != nil {
+		return nil, errors.New("Failed to get thing")
+	}
+	res := Asset{}
+	json.Unmarshal(assetAsBytes, &res)
+	res.Value = args[1]
 	jsonAsBytes, _ := json.Marshal(res)
 	err = stub.PutState(args[0], jsonAsBytes)
 	if err != nil {
